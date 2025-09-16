@@ -1,4 +1,4 @@
-# appcalibracao
+# Aplicativo de Calibração de PID para Categoria IEEE Very Small Size
 
 A new Flutter project.
 
