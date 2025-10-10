@@ -1,4 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+
+// ------------------------------------------------------------------
+// A LISTA DE ESTADOS É AGORA GLOBAL E PERSISTENTE
+// ------------------------------------------------------------------
+final List<Map<String, dynamic>> attackerEstados = [
+  {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+];
+// ------------------------------------------------------------------
 
 class AttackerPage extends StatefulWidget {
   const AttackerPage({super.key});
@@ -8,10 +18,25 @@ class AttackerPage extends StatefulWidget {
 }
 
 class _AttackerPageState extends State<AttackerPage> {
-  final List<Map<String, dynamic>> estados = [
-    {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-    {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-  ];
+  // A lista 'estados' original foi removida daqui
+
+  // Função para gerar o mapa no formato desejado
+  Map<String, dynamic> _generateJson() {
+    final Map<String, dynamic> attackerData = {};
+
+    // Usa a lista global
+    for (final estado in attackerEstados) {
+      final key = estado["nome"].toString();
+
+      attackerData[key] = {
+        "kp": estado["kp"],
+        "kd": estado["kd"],
+        "pwm": estado["pwm"],
+      };
+    }
+
+    return {"atacante": attackerData};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +44,29 @@ class _AttackerPageState extends State<AttackerPage> {
       appBar: AppBar(
         title: const Text("Attacker - Calibration"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.code),
+            onPressed: () {
+              final jsonData = _generateJson();
+              final jsonString = jsonEncode(jsonData);
+
+              print("--- JSON Gerado ---");
+              print(jsonString);
+              print("-------------------");
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('JSON gerado e impresso no console!')),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
-        itemCount: estados.length,
+        itemCount: attackerEstados.length, // Usa a lista global
         itemBuilder: (context, index) {
-          final estado = estados[index];
+          final estado = attackerEstados[index]; // Usa a lista global
           return ExpansionTile(
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -36,6 +79,7 @@ class _AttackerPageState extends State<AttackerPage> {
               ],
             ),
             children: [
+              // Todas as chamadas de _buildCalibration também usam a lista global
               _buildCalibration(
                 "Kp",
                 estado["kp"],
@@ -61,6 +105,7 @@ class _AttackerPageState extends State<AttackerPage> {
 
   Widget _buildCalibration(
       String label, double currentValue, Function(double) onChanged) {
+    // ... (Método _buildCalibration inalterado)
     final controller =
         TextEditingController(text: currentValue.toStringAsFixed(2));
 
@@ -83,6 +128,7 @@ class _AttackerPageState extends State<AttackerPage> {
                 if (parsed != null) {
                   onChanged(parsed);
                 }
+                controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
             ),
           ),
@@ -114,7 +160,9 @@ class _AttackerPageState extends State<AttackerPage> {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
                 setState(() {
-                  estados.add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
+                  // Adiciona à lista global
+                  attackerEstados
+                      .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
               }
               Navigator.pop(context);
@@ -132,7 +180,7 @@ class _AttackerPageState extends State<AttackerPage> {
       builder: (context) => AlertDialog(
         title: const Text("Remove State"),
         content: Text(
-          "Are you sure you want to remove the state '${estados[index]["nome"]}'?",
+          "Are you sure you want to remove the state '${attackerEstados[index]["nome"]}'?", // Usa a lista global
         ),
         actions: [
           TextButton(
@@ -142,7 +190,7 @@ class _AttackerPageState extends State<AttackerPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                estados.removeAt(index);
+                attackerEstados.removeAt(index); // Remove da lista global
               });
               Navigator.pop(context);
             },
