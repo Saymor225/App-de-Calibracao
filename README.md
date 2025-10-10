@@ -6,7 +6,6 @@ Você pode copiar e colar o texto abaixo no seu arquivo `README.md`.
 
 -----
 
-# 🤖 Attacker Calibration App (Configuração do Robô Atacante)
 
 ## Visão Geral do Projeto
 
