@@ -5,20 +5,20 @@ import 'dart:io'; // Necessário para RawDatagramSocket e InternetAddress
 // ------------------------------------------------------------------
 // A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
 // ------------------------------------------------------------------
-final List<Map<String, dynamic>> attackerEstados = [
+final List<Map<String, dynamic>> DefenderEstados = [
   {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
   {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
 ];
 // ------------------------------------------------------------------
 
-class AttackerPage extends StatefulWidget {
-  const AttackerPage({super.key});
+class DefenderPage extends StatefulWidget {
+  const DefenderPage({super.key});
 
   @override
-  State<AttackerPage> createState() => _AttackerPageState();
+  State<DefenderPage> createState() => _DefenderPageState();
 }
 
-class _AttackerPageState extends State<AttackerPage> {
+class _DefenderPageState extends State<DefenderPage> {
   // ------------------------------------------------------------------
   // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
   // ------------------------------------------------------------------
@@ -29,19 +29,19 @@ class _AttackerPageState extends State<AttackerPage> {
 
   // Função para gerar o mapa no formato JSON
   Map<String, dynamic> _generateJson() {
-    final Map<String, dynamic> attackerData = {};
+    final Map<String, dynamic> DefenderData = {};
 
-    for (final estado in attackerEstados) {
+    for (final estado in DefenderEstados) {
       final key = estado["nome"].toString();
 
-      attackerData[key] = {
+      DefenderData[key] = {
         "kp": estado["kp"],
         "kd": estado["kd"],
         "pwm": estado["pwm"],
       };
     }
 
-    return {"Attacker": attackerData};
+    return {"Defender": DefenderData};
   }
 
   // A FUNÇÃO UDP AGORA FAZ PARTE DA CLASSE STATE
@@ -101,7 +101,7 @@ class _AttackerPageState extends State<AttackerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Attacker - Calibration"),
+        title: const Text("Defender - Calibration"),
         centerTitle: true,
         actions: [
           IconButton(
@@ -125,9 +125,9 @@ class _AttackerPageState extends State<AttackerPage> {
         ],
       ),
       body: ListView.builder(
-        itemCount: attackerEstados.length,
+        itemCount: DefenderEstados.length,
         itemBuilder: (context, index) {
-          final estado = attackerEstados[index];
+          final estado = DefenderEstados[index];
           return ExpansionTile(
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,8 +219,8 @@ class _AttackerPageState extends State<AttackerPage> {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
                 setState(() {
-                  attackerEstados
-                      .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
+                  DefenderEstados.add(
+                      {"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
               }
               Navigator.pop(context);
@@ -238,7 +238,7 @@ class _AttackerPageState extends State<AttackerPage> {
       builder: (context) => AlertDialog(
         title: const Text("Remove State"),
         content: Text(
-          "Are you sure you want to remove the state '${attackerEstados[index]["nome"]}'?",
+          "Are you sure you want to remove the state '${DefenderEstados[index]["nome"]}'?",
         ),
         actions: [
           TextButton(
@@ -248,7 +248,7 @@ class _AttackerPageState extends State<AttackerPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                attackerEstados.removeAt(index);
+                DefenderEstados.removeAt(index);
               });
               Navigator.pop(context);
             },
