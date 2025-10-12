@@ -7,7 +7,7 @@ import 'dart:io'; // Necessário para RawDatagramSocket e InternetAddress
 // ------------------------------------------------------------------
 final List<Map<String, dynamic>> DefenderEstados = [
   {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-  {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "Seeking", "kp": 1.0, "kd": 0.0, "pwm": 0.0},
 ];
 // ------------------------------------------------------------------
 
