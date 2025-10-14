@@ -1,4 +1,15 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:io'; // Necessário para RawDatagramSocket e InternetAddress
+
+// ------------------------------------------------------------------
+// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
+// ------------------------------------------------------------------
+final List<Map<String, dynamic>> attackerEstados = [
+  {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+];
+// ------------------------------------------------------------------
 
 class AttackerPage extends StatefulWidget {
   const AttackerPage({super.key});
@@ -8,10 +19,83 @@ class AttackerPage extends StatefulWidget {
 }
 
 class _AttackerPageState extends State<AttackerPage> {
-  final List<Map<String, dynamic>> estados = [
-    {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-    {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-  ];
+  // ------------------------------------------------------------------
+  // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
+  // ------------------------------------------------------------------
+  static const String serverIp =
+      '192.168.1.102'; // Mude para o IP da sua máquina Windows/servidor
+  static const int serverPort = 8888; // Porta configurada no servidor C++
+  // ------------------------------------------------------------------
+
+  // Função para gerar o mapa no formato JSON
+  Map<String, dynamic> _generateJson() {
+    final Map<String, dynamic> attackerData = {};
+
+    for (final estado in attackerEstados) {
+      final key = estado["nome"].toString();
+
+      attackerData[key] = {
+        "kp": estado["kp"],
+        "kd": estado["kd"],
+        "pwm": estado["pwm"],
+      };
+    }
+
+    return {"Attacker": attackerData};
+  }
+
+  // A FUNÇÃO UDP AGORA FAZ PARTE DA CLASSE STATE
+  Future<void> _sendJsonViaUdp() async {
+    final jsonData = _generateJson();
+    final jsonString = jsonEncode(jsonData);
+
+    // Converte o IP de string para InternetAddress
+    final targetIp = InternetAddress(serverIp);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text('Tentando enviar UDP para $serverIp:$serverPort...')),
+    );
+    print('Enviando JSON via UDP para: $serverIp:$serverPort');
+
+    RawDatagramSocket? socket;
+
+    try {
+      // 1. Cria um socket UDP que se liga a qualquer interface e porta livre (0)
+      socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+
+      // 2. Converte a string JSON para bytes (codificação UTF-8)
+      List<int> data = utf8.encode(jsonString);
+
+      // 3. Envia o datagrama
+      int sent = socket.send(data, targetIp, serverPort);
+
+      // O UDP não tem confirmação garantida, mas podemos confirmar que o SO o enviou.
+      if (sent == data.length) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('✅ Datagrama UDP enviado: $sent bytes!')),
+        );
+        print('✅ JSON enviado via UDP com sucesso: $sent bytes');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Falha ao enviar datagrama completo.')),
+        );
+        print(
+            '❌ Falha ao enviar datagrama completo: $sent de ${data.length} bytes.');
+      }
+    } catch (e) {
+      // Erro de rede (ex: IPAddress inválido ou falha de binding)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('⚠️ Erro de socket UDP: ${e.toString()}')),
+      );
+      print('⚠️ Erro de socket UDP: $e');
+    } finally {
+      // Garante que o socket seja fechado
+      socket?.close();
+    }
+  }
+
+  // ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +103,31 @@ class _AttackerPageState extends State<AttackerPage> {
       appBar: AppBar(
         title: const Text("Attacker - Calibration"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.send), // Ícone de envio
+            onPressed: _sendJsonViaUdp, // CHAMA A NOVA FUNÇÃO UDP AQUI
+          ),
+          IconButton(
+            icon: const Icon(
+                Icons.code), // Mantém o botão de debug para ver o JSON
+            onPressed: () {
+              final jsonString = jsonEncode(_generateJson());
+              print("--- JSON Gerado ---");
+              print(jsonString);
+              print("-------------------");
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('JSON copiado para o console.')),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
-        itemCount: estados.length,
+        itemCount: attackerEstados.length,
         itemBuilder: (context, index) {
-          final estado = estados[index];
+          final estado = attackerEstados[index];
           return ExpansionTile(
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -83,6 +187,7 @@ class _AttackerPageState extends State<AttackerPage> {
                 if (parsed != null) {
                   onChanged(parsed);
                 }
+                controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
             ),
           ),
@@ -114,7 +219,8 @@ class _AttackerPageState extends State<AttackerPage> {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
                 setState(() {
-                  estados.add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
+                  attackerEstados
+                      .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
               }
               Navigator.pop(context);
@@ -132,7 +238,7 @@ class _AttackerPageState extends State<AttackerPage> {
       builder: (context) => AlertDialog(
         title: const Text("Remove State"),
         content: Text(
-          "Are you sure you want to remove the state '${estados[index]["nome"]}'?",
+          "Are you sure you want to remove the state '${attackerEstados[index]["nome"]}'?",
         ),
         actions: [
           TextButton(
@@ -142,7 +248,7 @@ class _AttackerPageState extends State<AttackerPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                estados.removeAt(index);
+                attackerEstados.removeAt(index);
               });
               Navigator.pop(context);
             },
