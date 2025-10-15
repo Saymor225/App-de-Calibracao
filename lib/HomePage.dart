@@ -1,5 +1,7 @@
 import 'package:appcalibracao/appControler.dart';
 import 'package:appcalibracao/attackerPage.dart';
+import 'package:appcalibracao/defenderPage.dart';
+import 'package:appcalibracao/goalkepperPage.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -36,6 +38,8 @@ class homePageState extends State<HomePage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => DefenderPage()));
                 // Aqui você pode navegar para a tela do Defensor
                 print("Defensor selecionado");
               },
@@ -44,7 +48,8 @@ class homePageState extends State<HomePage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Aqui você pode navegar para a tela do Goleiro
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => GoalKepperPage()));
                 print("Goleiro selecionado");
               },
               child: const Text("Goleiro"),

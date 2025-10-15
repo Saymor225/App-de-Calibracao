@@ -3,57 +3,56 @@ import 'dart:convert';
 import 'JsonSendWidget.dart'; // Necessário para RawDatagramSocket e InternetAddress
 
 // ------------------------------------------------------------------
-// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE PARA O DEFENDER
+// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
 // ------------------------------------------------------------------
-final List<Map<String, dynamic>> defenderEstados = [
-  {"nome": "Kicking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-  {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+final List<Map<String, dynamic>> goalkepperEstados = [
+  {"nome": "MoveFoward", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "MoveBackward", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
 ];
 // ------------------------------------------------------------------
 
-class DefenderPage extends StatefulWidget {
-  const DefenderPage({super.key});
+class GoalKepperPage extends StatefulWidget {
+  const GoalKepperPage({super.key});
 
   @override
-  State<DefenderPage> createState() => _DefenderPageState();
+  State<GoalKepperPage> createState() => _GoalKepperPageState();
 }
 
-class _DefenderPageState extends State<DefenderPage> {
+class _GoalKepperPageState extends State<GoalKepperPage> {
   // ------------------------------------------------------------------
-  // CONFIGURAÇÃO DO SERVIDOR UDP PARA O DEFENDER
-  // (Mude para o IP da sua máquina Windows e uma porta diferente, se necessário)
+  // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
   // ------------------------------------------------------------------
   static const String serverIp =
-      '192.168.1.102'; // Mantenha ou mude para o IP do seu servidor
-  static const int serverPort = 8888; // Exemplo: Usando uma porta diferente
+      '192.168.1.102'; // Mude para o IP da sua máquina Windows/servidor
+  static const int serverPort = 8888; // Porta configurada no servidor C++
   // ------------------------------------------------------------------
 
   // Função para gerar o mapa no formato JSON
   Map<String, dynamic> _generateJson() {
-    final Map<String, dynamic> defenderData = {};
+    final Map<String, dynamic> goalkepperData = {};
 
-    for (final estado in defenderEstados) {
+    for (final estado in goalkepperEstados) {
       final key = estado["nome"].toString();
 
-      defenderData[key] = {
+      goalkepperData[key] = {
         "kp": estado["kp"],
         "kd": estado["kd"],
         "pwm": estado["pwm"],
       };
     }
 
-    // A chave principal agora é "Defender"
-    return {"Defender": defenderData};
+    return {"Goleiro": goalkepperData};
   }
 
-  // A FUNÇÃO UDP PARA O DEFENDER
+  // A FUNÇÃO UDP AGORA FAZ PARTE DA CLASSE STATE
+
   // ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Defender - Calibration"),
+        title: const Text("goalkepper - Calibration"),
         centerTitle: true,
         actions: [
           UdpSendButton(
@@ -61,29 +60,28 @@ class _DefenderPageState extends State<DefenderPage> {
                 _generateJson, // Passa a referência da função geradora
             serverIp: serverIp,
             serverPort: serverPort,
-            debugLabel: 'Calibração DEFENDER',
+            debugLabel: 'Calibração Goalkepper',
           ),
           IconButton(
             icon: const Icon(
                 Icons.code), // Mantém o botão de debug para ver o JSON
             onPressed: () {
               final jsonString = jsonEncode(_generateJson());
-              print("--- JSON Defender Gerado ---");
+              print("--- JSON Gerado ---");
               print(jsonString);
-              print("--------------------------");
+              print("-------------------");
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('JSON Defender copiado para o console.')),
+                const SnackBar(content: Text('JSON copiado para o console.')),
               );
             },
           ),
         ],
       ),
       body: ListView.builder(
-        itemCount: defenderEstados.length,
+        itemCount: goalkepperEstados.length,
         itemBuilder: (context, index) {
-          final estado = defenderEstados[index];
+          final estado = goalkepperEstados[index];
           return ExpansionTile(
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,7 +117,6 @@ class _DefenderPageState extends State<DefenderPage> {
     );
   }
 
-  // Widget auxiliar para os campos de calibração
   Widget _buildCalibration(
       String label, double currentValue, Function(double) onChanged) {
     final controller =
@@ -144,7 +141,6 @@ class _DefenderPageState extends State<DefenderPage> {
                 if (parsed != null) {
                   onChanged(parsed);
                 }
-                // Atualiza o campo com o valor formatado ou "0.00"
                 controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
             ),
@@ -154,14 +150,13 @@ class _DefenderPageState extends State<DefenderPage> {
     );
   }
 
-  // Função para adicionar um novo estado
   void _adicionarEstado() {
     final controller = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("New Defender State"),
+        title: const Text("New State"),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -178,7 +173,7 @@ class _DefenderPageState extends State<DefenderPage> {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
                 setState(() {
-                  defenderEstados
+                  goalkepperEstados
                       .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
               }
@@ -191,14 +186,13 @@ class _DefenderPageState extends State<DefenderPage> {
     );
   }
 
-  // Função para confirmar e deletar um estado
   void _confirmarDelete(int index) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Remove Defender State"),
+        title: const Text("Remove State"),
         content: Text(
-          "Are you sure you want to remove the state '${defenderEstados[index]["nome"]}'?",
+          "Are you sure you want to remove the state '${goalkepperEstados[index]["nome"]}'?",
         ),
         actions: [
           TextButton(
@@ -208,7 +202,7 @@ class _DefenderPageState extends State<DefenderPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                defenderEstados.removeAt(index);
+                goalkepperEstados.removeAt(index);
               });
               Navigator.pop(context);
             },

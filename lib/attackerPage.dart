@@ -1,4 +1,16 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'JsonSendWidget.dart';
+// Necessário para RawDatagramSocket e InternetAddress
+
+// ------------------------------------------------------------------
+// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
+// ------------------------------------------------------------------
+final List<Map<String, dynamic>> attackerEstados = [
+  {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+];
+// ------------------------------------------------------------------
 
 class AttackerPage extends StatefulWidget {
   const AttackerPage({super.key});
@@ -8,10 +20,34 @@ class AttackerPage extends StatefulWidget {
 }
 
 class _AttackerPageState extends State<AttackerPage> {
-  final List<Map<String, dynamic>> estados = [
-    {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-    {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
-  ];
+  // ------------------------------------------------------------------
+  // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
+  // ------------------------------------------------------------------
+  static const String serverIp =
+      '192.168.1.102'; // Mude para o IP da sua máquina Windows/servidor
+  static const int serverPort = 8888; // Porta configurada no servidor C++
+  // ------------------------------------------------------------------
+
+  // Função para gerar o mapa no formato JSON
+  Map<String, dynamic> _generateJson() {
+    final Map<String, dynamic> attackerData = {};
+
+    for (final estado in attackerEstados) {
+      final key = estado["nome"].toString();
+
+      attackerData[key] = {
+        "kp": estado["kp"],
+        "kd": estado["kd"],
+        "pwm": estado["pwm"],
+      };
+    }
+
+    return {"Attacker": attackerData};
+  }
+
+  // A FUNÇÃO UDP AGORA FAZ PARTE DA CLASSE STATE
+
+  // ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +55,34 @@ class _AttackerPageState extends State<AttackerPage> {
       appBar: AppBar(
         title: const Text("Attacker - Calibration"),
         centerTitle: true,
+        actions: [
+          UdpSendButton(
+            jsonGenerator:
+                _generateJson, // Passa a referência da função geradora
+            serverIp: serverIp,
+            serverPort: serverPort,
+            debugLabel: 'Calibração ATACANTE',
+          ),
+          IconButton(
+            icon: const Icon(
+                Icons.code), // Mantém o botão de debug para ver o JSON
+            onPressed: () {
+              final jsonString = jsonEncode(_generateJson());
+              print("--- JSON Gerado ---");
+              print(jsonString);
+              print("-------------------");
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('JSON copiado para o console.')),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
-        itemCount: estados.length,
+        itemCount: attackerEstados.length,
         itemBuilder: (context, index) {
-          final estado = estados[index];
+          final estado = attackerEstados[index];
           return ExpansionTile(
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -83,6 +142,7 @@ class _AttackerPageState extends State<AttackerPage> {
                 if (parsed != null) {
                   onChanged(parsed);
                 }
+                controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
             ),
           ),
@@ -114,7 +174,8 @@ class _AttackerPageState extends State<AttackerPage> {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
                 setState(() {
-                  estados.add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
+                  attackerEstados
+                      .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
               }
               Navigator.pop(context);
@@ -132,7 +193,7 @@ class _AttackerPageState extends State<AttackerPage> {
       builder: (context) => AlertDialog(
         title: const Text("Remove State"),
         content: Text(
-          "Are you sure you want to remove the state '${estados[index]["nome"]}'?",
+          "Are you sure you want to remove the state '${attackerEstados[index]["nome"]}'?",
         ),
         actions: [
           TextButton(
@@ -142,7 +203,7 @@ class _AttackerPageState extends State<AttackerPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                estados.removeAt(index);
+                attackerEstados.removeAt(index);
               });
               Navigator.pop(context);
             },
