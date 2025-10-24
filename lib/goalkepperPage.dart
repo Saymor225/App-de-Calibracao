@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'JsonSendWidget.dart'; // Necessário para RawDatagramSocket e InternetAddress
+import 'dart:io'; // Essencial para File e Directory.systemTemp
+import 'JsonSendWidget.dart'; // Mantenha, se necessário para UdpSendButton
 
 // ------------------------------------------------------------------
-// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
+// A LISTA DE ESTADOS É GLOBAL. Inicialmente vazia para forçar o carregamento
+// do arquivo ou dos valores padrão no initState.
 // ------------------------------------------------------------------
-final List<Map<String, dynamic>> goalkepperEstados = [
+List<Map<String, dynamic>> goalkepperEstados = [];
+
+// Lista de estados padrão para usar se o arquivo não existir ou falhar
+const List<Map<String, dynamic>> _DEFAULT_ESTADOS = [
   {"nome": "MoveFoward", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
   {"nome": "MoveBackward", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
 ];
@@ -20,12 +25,81 @@ class GoalKepperPage extends StatefulWidget {
 
 class _GoalKepperPageState extends State<GoalKepperPage> {
   // ------------------------------------------------------------------
-  // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
+  // CONFIGURAÇÃO DO SERVIDOR UDP
   // ------------------------------------------------------------------
   static const String serverIp =
       '192.168.1.102'; // Mude para o IP da sua máquina Windows/servidor
   static const int serverPort = 8888; // Porta configurada no servidor C++
   // ------------------------------------------------------------------
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEstados(); // Tenta carregar os dados persistidos
+  }
+
+// #################### Funções de Persistência (Arquivo JSON - TEMPORÁRIO) ####################
+
+// 1. Obtém o caminho do arquivo no diretório TEMPORÁRIO do sistema.
+  Future<File> get _localFile async {
+    final directory = Directory.systemTemp;
+    return File('${directory.path}/goalkepper_config.json');
+  }
+
+// 2. Salva a lista de estados no arquivo como JSON.
+  Future<void> _saveEstados() async {
+    final file = await _localFile;
+    final jsonString = jsonEncode(goalkepperEstados);
+    await file.writeAsString(jsonString);
+  }
+
+// 3. Carrega a lista de estados do arquivo, usando o padrão se falhar.
+  Future<void> _loadEstados() async {
+    List<Map<String, dynamic>> estadosCarregados = [];
+    bool success = false;
+
+    try {
+      final file = await _localFile;
+      if (await file.exists()) {
+        final String jsonString = await file.readAsString();
+        final List<dynamic> jsonList = jsonDecode(jsonString);
+
+        estadosCarregados =
+            jsonList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+        // Assume sucesso se carregou algo
+        success = estadosCarregados.isNotEmpty;
+      }
+    } catch (_) {
+      // Falhou em carregar/decodificar. Success continua 'false'.
+    }
+
+    if (!success) {
+      // Se falhou, usa a cópia da lista padrão
+      estadosCarregados =
+          _DEFAULT_ESTADOS.map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+
+    // Atualiza o estado
+    setState(() {
+      goalkepperEstados = estadosCarregados;
+    });
+
+    // Se usou o padrão (ou falhou), salva para recriar o arquivo temporário
+    if (!success) {
+      await _saveEstados();
+    }
+  }
+
+// Método auxiliar para chamar setState e salvar o arquivo
+  void _updateAndSave(VoidCallback updateCallback) {
+    setState(() {
+      updateCallback();
+    });
+    _saveEstados(); // Salva o novo estado após a alteração
+  }
+
+  // #################### Fim das Funções de Persistência ####################
 
   // Função para gerar o mapa no formato JSON
   Map<String, dynamic> _generateJson() {
@@ -44,10 +118,6 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
     return {"Goleiro": goalkepperData};
   }
 
-  // A FUNÇÃO UDP AGORA FAZ PARTE DA CLASSE STATE
-
-  // ------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,6 +125,7 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
         title: const Text("goalkepper - Calibration"),
         centerTitle: true,
         actions: [
+          // Widget que envia o JSON via UDP
           UdpSendButton(
             jsonGenerator:
                 _generateJson, // Passa a referência da função geradora
@@ -63,8 +134,7 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
             debugLabel: 'Calibração Goalkepper',
           ),
           IconButton(
-            icon: const Icon(
-                Icons.code), // Mantém o botão de debug para ver o JSON
+            icon: const Icon(Icons.code), // Botão de debug para ver o JSON
             onPressed: () {
               final jsonString = jsonEncode(_generateJson());
               print("--- JSON Gerado ---");
@@ -78,38 +148,46 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: goalkepperEstados.length,
-        itemBuilder: (context, index) {
-          final estado = goalkepperEstados[index];
-          return ExpansionTile(
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(estado["nome"]),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _confirmarDelete(index),
-                ),
-              ],
+      body: goalkepperEstados.isEmpty && mounted
+          ? const Center(child: CircularProgressIndicator()) // Mostra loading
+          : ListView.builder(
+              itemCount: goalkepperEstados.length,
+              itemBuilder: (context, index) {
+                final estado = goalkepperEstados[index];
+                return ExpansionTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(estado["nome"]),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        // Chama a função que leva ao _updateAndSave
+                        onPressed: () => _confirmarDelete(index),
+                      ),
+                    ],
+                  ),
+                  children: [
+                    _buildCalibration(
+                      "Kp",
+                      estado["kp"],
+                      // Usa _updateAndSave para persistir a alteração
+                      (value) => _updateAndSave(() => estado["kp"] = value),
+                    ),
+                    _buildCalibration(
+                      "Kd",
+                      estado["kd"],
+                      // Usa _updateAndSave para persistir a alteração
+                      (value) => _updateAndSave(() => estado["kd"] = value),
+                    ),
+                    _buildCalibration(
+                        "pwm",
+                        estado["pwm"],
+                        // Usa _updateAndSave para persistir a alteração
+                        (value) => _updateAndSave(() => estado["pwm"] = value)),
+                  ],
+                );
+              },
             ),
-            children: [
-              _buildCalibration(
-                "Kp",
-                estado["kp"],
-                (value) => setState(() => estado["kp"] = value),
-              ),
-              _buildCalibration(
-                "Kd",
-                estado["kd"],
-                (value) => setState(() => estado["kd"] = value),
-              ),
-              _buildCalibration("pwm", estado["pwm"],
-                  (value) => setState(() => estado["pwm"] = value)),
-            ],
-          );
-        },
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarEstado,
         child: const Icon(Icons.add),
@@ -139,8 +217,9 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
               onSubmitted: (val) {
                 final parsed = double.tryParse(val);
                 if (parsed != null) {
-                  onChanged(parsed);
+                  onChanged(parsed); // Chama _updateAndSave
                 }
+                // Garante que o campo de texto exiba o valor formatado
                 controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
             ),
@@ -172,7 +251,8 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
             onPressed: () {
               final nome = controller.text.trim();
               if (nome.isNotEmpty) {
-                setState(() {
+                _updateAndSave(() {
+                  // Chama _updateAndSave
                   goalkepperEstados
                       .add({"nome": nome, "kp": 0.0, "kd": 0.0, "pwm": 0.0});
                 });
@@ -201,7 +281,8 @@ class _GoalKepperPageState extends State<GoalKepperPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {
+              _updateAndSave(() {
+                // Chama _updateAndSave
                 goalkepperEstados.removeAt(index);
               });
               Navigator.pop(context);
