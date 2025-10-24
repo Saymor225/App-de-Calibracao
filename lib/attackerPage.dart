@@ -24,7 +24,7 @@ class _AttackerPageState extends State<AttackerPage> {
   // CONFIGURAÇÃO DO SERVIDOR UDP (Mude para o IP da sua máquina Windows)
   // ------------------------------------------------------------------
   static const String serverIp =
-      '192.168.1.102'; // Mude para o IP da sua máquina Windows/servidor
+      '192.168.1.103'; // Mude para o IP da sua máquina Windows/servidor
   static const int serverPort = 8888; // Porta configurada no servidor C++
   // ------------------------------------------------------------------
 
