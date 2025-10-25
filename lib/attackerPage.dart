@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:io'; // Importante para File e Directory.systemTemp
-import 'JsonSendWidget.dart'; // Necessário para RawDatagramSocket e InternetAddress
+import 'dart:io';
+import 'package:provider/provider.dart'; // Import necessário
+import 'JsonSendWidget.dart';
+import 'server_config.dart'; // Importa a classe simples de IP/Porta
 
 // ------------------------------------------------------------------
-// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE
-// Mude para uma lista vazia, o estado padrão será aplicado no _loadEstados()
+// LISTA DE ESTADOS DE CALIBRAÇÃO (Mantendo a persistência de arquivo JSON)
 // ------------------------------------------------------------------
 List<Map<String, dynamic>> attackerEstados = [];
 
-// Lista de estados padrão para usar se o arquivo não existir ou falhar
 const List<Map<String, dynamic>> _ATTACKER_DEFAULT_ESTADOS = [
   {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
   {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
@@ -24,41 +24,32 @@ class AttackerPage extends StatefulWidget {
 }
 
 class _AttackerPageState extends State<AttackerPage> {
-  // ------------------------------------------------------------------
-  // CONFIGURAÇÃO DO SERVIDOR UDP
-  // ------------------------------------------------------------------
-  static const String serverIp =
-      '192.168.1.103'; // Mude para o IP da sua máquina Windows/servidor
-  static const int serverPort = 8888; // Porta configurada no servidor C++
-  // ------------------------------------------------------------------
+  // OMITIDO: static const serverIp e serverPort
 
   @override
   void initState() {
     super.initState();
-    _loadEstados(); // Tenta carregar os dados salvos ao iniciar a tela
+    // Você ainda precisa carregar o estado de CALIBRAÇÃO do arquivo JSON
+    // Se não tiver essa parte, comente ou ignore.
+    _loadEstados();
   }
 
-  // #################### Funções de Persistência (Arquivo JSON - TEMPORÁRIO) ####################
+  // #################### Funções de Persistência (CALIBRAÇÃO) ####################
+  // Estas funções permanecem as mesmas para persistir os Kp/Kd/pwm
 
-  // 1. Obtém o caminho do arquivo no diretório TEMPORÁRIO do sistema.
   Future<File> get _localFile async {
     final directory = Directory.systemTemp;
-    // Usando um nome de arquivo exclusivo para o Attacker
     return File('${directory.path}/attacker_config.json');
   }
 
-  // 2. Salva a lista de estados no arquivo como JSON.
   Future<void> _saveEstados() async {
     try {
       final file = await _localFile;
       final jsonString = jsonEncode(attackerEstados);
       await file.writeAsString(jsonString);
-    } catch (_) {
-      // Ignora erros de salvamento para simplificar e evitar travar
-    }
+    } catch (_) {}
   }
 
-  // 3. Carrega a lista de estados do arquivo, usando o padrão se falhar.
   Future<void> _loadEstados() async {
     List<Map<String, dynamic>> estadosCarregados = [];
     bool success = false;
@@ -68,59 +59,98 @@ class _AttackerPageState extends State<AttackerPage> {
       if (await file.exists()) {
         final String jsonString = await file.readAsString();
         final List<dynamic> jsonList = jsonDecode(jsonString);
-
         estadosCarregados =
             jsonList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-
         success = estadosCarregados.isNotEmpty;
       }
-    } catch (_) {
-      // Falhou em carregar/decodificar. Success continua 'false'.
-    }
+    } catch (_) {}
 
     if (!success) {
-      // Se falhou, usa a cópia da lista padrão
       estadosCarregados = _ATTACKER_DEFAULT_ESTADOS
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     }
 
-    // Atualiza o estado global e a UI
     setState(() {
       attackerEstados = estadosCarregados;
     });
 
-    // Se usou o padrão (ou falhou), salva para recriar o arquivo temporário
     if (!success) {
       await _saveEstados();
     }
   }
 
-  // Método auxiliar para chamar setState e salvar o arquivo
   void _updateAndSave(VoidCallback updateCallback) {
     setState(() {
       updateCallback();
     });
-    _saveEstados(); // Salva o novo estado após a alteração
+    _saveEstados();
   }
+  // #################### Fim Persistência CALIBRAÇÃO ####################
 
-  // #################### Fim das Funções de Persistência ####################
-
-  // Função para gerar o mapa no formato JSON
   Map<String, dynamic> _generateJson() {
     final Map<String, dynamic> attackerData = {};
-
     for (final estado in attackerEstados) {
       final key = estado["nome"].toString();
-
       attackerData[key] = {
         "kp": estado["kp"],
         "kd": estado["kd"],
         "pwm": estado["pwm"],
       };
     }
-
     return {"Attacker": attackerData};
+  }
+
+  // NOVO: Método para mostrar o diálogo de configuração
+  void _showConfigDialog(BuildContext context) {
+    // Acessa o objeto de configuração (não o Consumer)
+    final config = Provider.of<ServerConfig>(context, listen: false);
+    final ipController = TextEditingController(text: config.ip);
+    final portController = TextEditingController(text: config.port.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Configuração de Rede"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                  labelText: "Endereço IP (Não persistente)"),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+            ),
+            TextField(
+              controller: portController,
+              decoration: const InputDecoration(
+                  labelText: "Porta UDP (Não persistente)"),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newIp = ipController.text.trim();
+              final newPort = int.tryParse(portController.text.trim());
+
+              config.setIp(newIp);
+
+              config.setPort(newPort!);
+
+              Navigator.pop(context);
+            },
+            child: const Text("Salvar"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -130,12 +160,23 @@ class _AttackerPageState extends State<AttackerPage> {
         title: const Text("Attacker - Calibration"),
         centerTitle: true,
         actions: [
-          UdpSendButton(
-            jsonGenerator: _generateJson,
-            serverIp: serverIp,
-            serverPort: serverPort,
-            debugLabel: 'Calibração ATACANTE',
+          // USANDO CONSUMER para reconstruir APENAS o botão UDP quando o IP/Porta mudar
+          Consumer<ServerConfig>(
+            builder: (context, config, child) {
+              return UdpSendButton(
+                jsonGenerator: _generateJson,
+                serverIp: config.ip, // Valor dinâmico
+                serverPort: config.port, // Valor dinâmico
+                debugLabel: 'Calibração ATACANTE',
+              );
+            },
           ),
+          // Botão de Configuração
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _showConfigDialog(context),
+          ),
+          // Botão de Debug JSON
           IconButton(
             icon: const Icon(Icons.code),
             onPressed: () {
@@ -143,7 +184,6 @@ class _AttackerPageState extends State<AttackerPage> {
               print("--- JSON Gerado ---");
               print(jsonString);
               print("-------------------");
-
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('JSON copiado para o console.')),
               );
@@ -151,46 +191,38 @@ class _AttackerPageState extends State<AttackerPage> {
           ),
         ],
       ),
-      body: attackerEstados.isEmpty && mounted
-          ? const Center(child: CircularProgressIndicator()) // Mostra loading
-          : ListView.builder(
-              itemCount: attackerEstados.length,
-              itemBuilder: (context, index) {
-                final estado = attackerEstados[index];
-                return ExpansionTile(
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(estado["nome"]),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        // Chama o método que salva
-                        onPressed: () => _confirmarDelete(index),
-                      ),
-                    ],
-                  ),
-                  children: [
-                    _buildCalibration(
-                      "Kp",
-                      estado["kp"],
-                      // Usa _updateAndSave
-                      (value) => _updateAndSave(() => estado["kp"] = value),
-                    ),
-                    _buildCalibration(
-                      "Kd",
-                      estado["kd"],
-                      // Usa _updateAndSave
-                      (value) => _updateAndSave(() => estado["kd"] = value),
-                    ),
-                    _buildCalibration(
-                        "pwm",
-                        estado["pwm"],
-                        // Usa _updateAndSave
-                        (value) => _updateAndSave(() => estado["pwm"] = value)),
-                  ],
-                );
-              },
+      body: ListView.builder(
+        itemCount: attackerEstados.length,
+        itemBuilder: (context, index) {
+          final estado = attackerEstados[index];
+          return ExpansionTile(
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(estado["nome"]),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _confirmarDelete(index),
+                ),
+              ],
             ),
+            children: [
+              _buildCalibration(
+                "Kp",
+                estado["kp"],
+                (value) => _updateAndSave(() => estado["kp"] = value),
+              ),
+              _buildCalibration(
+                "Kd",
+                estado["kd"],
+                (value) => _updateAndSave(() => estado["kd"] = value),
+              ),
+              _buildCalibration("pwm", estado["pwm"],
+                  (value) => _updateAndSave(() => estado["pwm"] = value)),
+            ],
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarEstado,
         child: const Icon(Icons.add),
@@ -220,7 +252,7 @@ class _AttackerPageState extends State<AttackerPage> {
               onSubmitted: (val) {
                 final parsed = double.tryParse(val);
                 if (parsed != null) {
-                  onChanged(parsed); // Chama _updateAndSave
+                  onChanged(parsed);
                 }
                 controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },

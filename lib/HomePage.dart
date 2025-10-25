@@ -28,7 +28,7 @@ class homePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => AttackerPage()));
-                // Aqui você pode navegar para a tela do Atacante
+                
                 print("Atacante selecionado");
               },
               child: const Text("Atacante"),
@@ -38,7 +38,7 @@ class homePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => DefenderPage()));
-                // Aqui você pode navegar para a tela do Defensor
+                
                 print("Defensor selecionado");
               },
               child: const Text("Defensor"),
