@@ -8,13 +8,17 @@ class AppWidget extends StatelessWidget {
     return AnimatedBuilder(
         animation: appControler.instance,
         builder: (context, child) {
+          const Color primarySeedColor = Color.fromARGB(255, 5, 62, 247);
+          final Brightness themeBrightness = appControler.instance.darkTheme
+              ? Brightness.dark
+              : Brightness.light;
+
           return MaterialApp(
             theme: ThemeData(
-              primaryColor: Colors.red,
-              brightness: appControler.instance.darkTheme
-                  ? Brightness.dark
-                  : Brightness.light,
-            ),
+                colorScheme: ColorScheme.fromSeed(
+              seedColor: primarySeedColor,
+              brightness: themeBrightness,
+            )),
             home: HomePage(),
           );
         });

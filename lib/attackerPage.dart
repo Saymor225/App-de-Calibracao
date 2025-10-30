@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:provider/provider.dart'; // Import necessário
+import 'package:provider/provider.dart';
 import 'JsonSendWidget.dart';
-import 'server_config.dart'; // Importa a classe simples de IP/Porta
+import 'server_config.dart';
 
-// ------------------------------------------------------------------
-// LISTA DE ESTADOS DE CALIBRAÇÃO (Mantendo a persistência de arquivo JSON)
-// ------------------------------------------------------------------
 List<Map<String, dynamic>> attackerEstados = [];
 
+// ignore: constant_identifier_names
 const List<Map<String, dynamic>> _ATTACKER_DEFAULT_ESTADOS = [
   {"nome": "Attacking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
   {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
@@ -24,17 +22,13 @@ class AttackerPage extends StatefulWidget {
 }
 
 class _AttackerPageState extends State<AttackerPage> {
-  // OMITIDO: static const serverIp e serverPort
-
   @override
   void initState() {
     super.initState();
-    // Você ainda precisa carregar o estado de CALIBRAÇÃO do arquivo JSON
-    // Se não tiver essa parte, comente ou ignore.
     _loadEstados();
   }
 
-  // #################### Funções de Persistência (CALIBRAÇÃO) ####################
+  //Funções de Persistência (CALIBRAÇÃO)
   // Estas funções permanecem as mesmas para persistir os Kp/Kd/pwm
 
   Future<File> get _localFile async {
@@ -86,7 +80,7 @@ class _AttackerPageState extends State<AttackerPage> {
     });
     _saveEstados();
   }
-  // #################### Fim Persistência CALIBRAÇÃO ####################
+  //
 
   Map<String, dynamic> _generateJson() {
     final Map<String, dynamic> attackerData = {};
@@ -101,9 +95,7 @@ class _AttackerPageState extends State<AttackerPage> {
     return {"Attacker": attackerData};
   }
 
-  // NOVO: Método para mostrar o diálogo de configuração
   void _showConfigDialog(BuildContext context) {
-    // Acessa o objeto de configuração (não o Consumer)
     final config = Provider.of<ServerConfig>(context, listen: false);
     final ipController = TextEditingController(text: config.ip);
     final portController = TextEditingController(text: config.port.toString());
@@ -117,15 +109,13 @@ class _AttackerPageState extends State<AttackerPage> {
           children: [
             TextField(
               controller: ipController,
-              decoration: const InputDecoration(
-                  labelText: "Endereço IP (Não persistente)"),
+              decoration: const InputDecoration(labelText: "Endereço IP"),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
             ),
             TextField(
               controller: portController,
-              decoration: const InputDecoration(
-                  labelText: "Porta UDP (Não persistente)"),
+              decoration: const InputDecoration(labelText: "Porta UDP"),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -156,17 +146,18 @@ class _AttackerPageState extends State<AttackerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text("Attacker - Calibration"),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
         actions: [
-          // USANDO CONSUMER para reconstruir APENAS o botão UDP quando o IP/Porta mudar
           Consumer<ServerConfig>(
             builder: (context, config, child) {
               return UdpSendButton(
                 jsonGenerator: _generateJson,
-                serverIp: config.ip, // Valor dinâmico
-                serverPort: config.port, // Valor dinâmico
+                serverIp: config.ip,
+                serverPort: config.port,
                 debugLabel: 'Calibração ATACANTE',
               );
             },
@@ -191,37 +182,49 @@ class _AttackerPageState extends State<AttackerPage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: attackerEstados.length,
-        itemBuilder: (context, index) {
-          final estado = attackerEstados[index];
-          return ExpansionTile(
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(estado["nome"]),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _confirmarDelete(index),
-                ),
-              ],
-            ),
-            children: [
-              _buildCalibration(
-                "Kp",
-                estado["kp"],
-                (value) => _updateAndSave(() => estado["kp"] = value),
-              ),
-              _buildCalibration(
-                "Kd",
-                estado["kd"],
-                (value) => _updateAndSave(() => estado["kd"] = value),
-              ),
-              _buildCalibration("pwm", estado["pwm"],
-                  (value) => _updateAndSave(() => estado["pwm"] = value)),
-            ],
-          );
-        },
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color.fromARGB(255, 0, 0, 0), //
+          image: DecorationImage(
+            image: AssetImage('assets/Background.png'),
+            fit: BoxFit.contain,
+          ),
+        ),
+        child: ListView.builder(
+          itemCount: attackerEstados.length,
+          itemBuilder: (context, index) {
+            final estado = attackerEstados[index];
+            return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                elevation: 4,
+                child: ExpansionTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(estado["nome"]),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmarDelete(index),
+                      ),
+                    ],
+                  ),
+                  children: [
+                    _buildCalibration(
+                      "Kp",
+                      estado["kp"],
+                      (value) => _updateAndSave(() => estado["kp"] = value),
+                    ),
+                    _buildCalibration(
+                      "Kd",
+                      estado["kd"],
+                      (value) => _updateAndSave(() => estado["kd"] = value),
+                    ),
+                    _buildCalibration("pwm", estado["pwm"],
+                        (value) => _updateAndSave(() => estado["pwm"] = value)),
+                  ],
+                ));
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarEstado,

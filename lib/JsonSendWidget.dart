@@ -1,9 +1,7 @@
-// udp_send_button.dart
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 
-// Definição do contrato para a função que gera o JSON
 typedef JsonGenerator = Map<String, dynamic> Function();
 
 // Definição do Widget UdpSendButton
@@ -11,7 +9,7 @@ class UdpSendButton extends StatelessWidget {
   final JsonGenerator jsonGenerator;
   final String serverIp;
   final int serverPort;
-  final String debugLabel; // Para logs e feedback na SnackBar
+  final String debugLabel;
 
   const UdpSendButton({
     super.key,
@@ -56,7 +54,6 @@ class UdpSendButton extends StatelessWidget {
         );
       }
     } catch (e) {
-      // --- Tratamento de Erro de Rede ---
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('⚠️ Erro de rede $debugLabel: ${e.toString()}')),
       );

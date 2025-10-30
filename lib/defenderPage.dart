@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:io'; // Importante para File e Directory.systemTemp
-import 'JsonSendWidget.dart'; // Necessário para RawDatagramSocket e InternetAddress
+import 'dart:io';
+import 'package:provider/provider.dart';
+import 'JsonSendWidget.dart';
+import 'server_config.dart';
 
-// ------------------------------------------------------------------
-// A LISTA DE ESTADOS É GLOBAL E PERSISTENTE PARA O DEFENDER
-// Mude para uma lista vazia, o estado padrão será aplicado no _loadEstados()
-// ------------------------------------------------------------------
 List<Map<String, dynamic>> defenderEstados = [];
 
-// Lista de estados padrão para usar se o arquivo não existir ou falhar
+// ignore: constant_identifier_names
 const List<Map<String, dynamic>> _DEFENDER_DEFAULT_ESTADOS = [
-  {"nome": "Kicking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
+  {"nome": "Defending", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
   {"nome": "Seeking", "kp": 0.0, "kd": 0.0, "pwm": 0.0},
 ];
 // ------------------------------------------------------------------
@@ -24,41 +22,27 @@ class DefenderPage extends StatefulWidget {
 }
 
 class _DefenderPageState extends State<DefenderPage> {
-  // ------------------------------------------------------------------
-  // CONFIGURAÇÃO DO SERVIDOR UDP PARA O DEFENDER
-  // ------------------------------------------------------------------
-  static const String serverIp = '192.168.1.102';
-  static const int serverPort = 8888;
-  // ------------------------------------------------------------------
-
   @override
   void initState() {
     super.initState();
-    _loadEstados(); // Tenta carregar os dados salvos ao iniciar a tela
+    _loadEstados();
   }
 
-  // #################### Funções de Persistência (Arquivo JSON - TEMPORÁRIO) ####################
-
-  // 1. Obtém o caminho do arquivo no diretório TEMPORÁRIO do sistema.
   Future<File> get _localFile async {
-    // Usando Directory.systemTemp para evitar path_provider
     final directory = Directory.systemTemp;
-    // Usando um nome de arquivo específico para o Defender
+
     return File('${directory.path}/defender_config.json');
   }
 
-  // 2. Salva a lista de estados no arquivo como JSON.
   Future<void> _saveEstados() async {
     try {
       final file = await _localFile;
+
       final jsonString = jsonEncode(defenderEstados);
       await file.writeAsString(jsonString);
-    } catch (_) {
-      // Ignora erros de salvamento para simplificar e evitar travar
-    }
+    } catch (_) {}
   }
 
-  // 3. Carrega a lista de estados do arquivo, usando o padrão se falhar.
   Future<void> _loadEstados() async {
     List<Map<String, dynamic>> estadosCarregados = [];
     bool success = false;
@@ -68,51 +52,41 @@ class _DefenderPageState extends State<DefenderPage> {
       if (await file.exists()) {
         final String jsonString = await file.readAsString();
         final List<dynamic> jsonList = jsonDecode(jsonString);
-
         estadosCarregados =
             jsonList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-
         success = estadosCarregados.isNotEmpty;
       }
-    } catch (_) {
-      // Falhou em carregar/decodificar. Success continua 'false'.
-    }
+    } catch (_) {}
 
     if (!success) {
-      // Se falhou, usa a cópia da lista padrão
       estadosCarregados = _DEFENDER_DEFAULT_ESTADOS
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     }
 
-    // Atualiza o estado global e a UI
     setState(() {
       defenderEstados = estadosCarregados;
     });
 
-    // Se usou o padrão (ou falhou), salva para recriar o arquivo temporário
     if (!success) {
       await _saveEstados();
     }
   }
 
-  // Método auxiliar para chamar setState e salvar o arquivo
   void _updateAndSave(VoidCallback updateCallback) {
     setState(() {
       updateCallback();
     });
-    _saveEstados(); // Salva o novo estado após a alteração
+    _saveEstados();
   }
 
-  // #################### Fim das Funções de Persistência ####################
+  //
 
-  // Função para gerar o mapa no formato JSON
   Map<String, dynamic> _generateJson() {
     final Map<String, dynamic> defenderData = {};
 
     for (final estado in defenderEstados) {
       final key = estado["nome"].toString();
-
       defenderData[key] = {
         "kp": estado["kp"],
         "kd": estado["kd"],
@@ -120,79 +94,139 @@ class _DefenderPageState extends State<DefenderPage> {
       };
     }
 
-    // A chave principal é "Defender"
     return {"Defender": defenderData};
+  }
+
+  void _showConfigDialog(BuildContext context) {
+    final config = Provider.of<ServerConfig>(context, listen: false);
+    final ipController = TextEditingController(text: config.ip);
+    final portController = TextEditingController(text: config.port.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Configuração de Rede"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(labelText: "Endereço IP"),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+            ),
+            TextField(
+              controller: portController,
+              decoration: const InputDecoration(labelText: "Porta UDP"),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newIp = ipController.text.trim();
+              final newPort = int.tryParse(portController.text.trim());
+
+              config.setIp(newIp);
+
+              config.setPort(newPort!);
+
+              Navigator.pop(context);
+            },
+            child: const Text("Salvar"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text("Defender - Calibration"),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
         actions: [
-          UdpSendButton(
-            jsonGenerator: _generateJson,
-            serverIp: serverIp,
-            serverPort: serverPort,
-            debugLabel: 'Calibração DEFENDER',
+          Consumer<ServerConfig>(
+            builder: (context, config, child) {
+              return UdpSendButton(
+                jsonGenerator: _generateJson,
+                serverIp: config.ip,
+                serverPort: config.port,
+                debugLabel: 'Calibração DEFENSOR',
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _showConfigDialog(context),
           ),
           IconButton(
             icon: const Icon(Icons.code),
             onPressed: () {
               final jsonString = jsonEncode(_generateJson());
-              print("--- JSON Defender Gerado ---");
+              print("--- JSON Gerado ---");
               print(jsonString);
-              print("--------------------------");
-
+              print("-------------------");
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('JSON Defender copiado para o console.')),
+                const SnackBar(content: Text('JSON copiado para o console.')),
               );
             },
           ),
         ],
       ),
-      body: defenderEstados.isEmpty && mounted
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: defenderEstados.length,
-              itemBuilder: (context, index) {
-                final estado = defenderEstados[index];
-                return ExpansionTile(
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(estado["nome"]),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        // Chama o método que salva
-                        onPressed: () => _confirmarDelete(index),
-                      ),
-                    ],
-                  ),
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color.fromARGB(255, 0, 0, 0),
+          image: DecorationImage(
+            image: AssetImage('assets/Background.png'),
+            fit: BoxFit.contain,
+          ),
+        ),
+        child: ListView.builder(
+          itemCount: defenderEstados.length,
+          itemBuilder: (context, index) {
+            final estado = defenderEstados[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              elevation: 4,
+              child: ExpansionTile(
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildCalibration(
-                      "Kp",
-                      estado["kp"],
-                      // Usa _updateAndSave
-                      (value) => _updateAndSave(() => estado["kp"] = value),
+                    Text(estado["nome"]),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _confirmarDelete(index),
                     ),
-                    _buildCalibration(
-                      "Kd",
-                      estado["kd"],
-                      // Usa _updateAndSave
-                      (value) => _updateAndSave(() => estado["kd"] = value),
-                    ),
-                    _buildCalibration(
-                        "pwm",
-                        estado["pwm"],
-                        // Usa _updateAndSave
-                        (value) => _updateAndSave(() => estado["pwm"] = value)),
                   ],
-                );
-              },
-            ),
+                ),
+                children: [
+                  _buildCalibration(
+                    "Kp",
+                    estado["kp"],
+                    (value) => _updateAndSave(() => estado["kp"] = value),
+                  ),
+                  _buildCalibration(
+                    "Kd",
+                    estado["kd"],
+                    (value) => _updateAndSave(() => estado["kd"] = value),
+                  ),
+                  _buildCalibration("pwm", estado["pwm"],
+                      (value) => _updateAndSave(() => estado["pwm"] = value)),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarEstado,
         child: const Icon(Icons.add),
@@ -222,7 +256,7 @@ class _DefenderPageState extends State<DefenderPage> {
               onSubmitted: (val) {
                 final parsed = double.tryParse(val);
                 if (parsed != null) {
-                  onChanged(parsed); // Chama _updateAndSave
+                  onChanged(parsed);
                 }
                 controller.text = parsed?.toStringAsFixed(2) ?? "0.00";
               },
