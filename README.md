@@ -2,10 +2,10 @@
 
 ## 📝 Visão Geral do Projeto
 
-O **FHOBots PID Calibrator App** é uma ferramenta móvel essencial desenvolvida para a equipe de Robótica **FHOBots** na categoria **Very Small Size Soccer (VSSS)** da IEEE.
+O **Aplicativo de Calibração do FHOBots** é uma ferramenta desenvolvida para a equipe de Robótica FHOBots na categoria **Very Small Size Soccer (VSSS)** da IEEE.
 
-Este aplicativo permite o **ajuste fino e em tempo real** dos parâmetros do controlador **PID** (`Kp`, `Kd`) e dos valores de **PWM** (Pulse-Width Modulation) para cada um dos robôs (**Atacante**, **Defensor** e **Goleiro**).  
-A calibração é enviada instantaneamente para a estação base via protocolo **UDP** (User Datagram Protocol), otimizando o ciclo de ajuste de controle em campo.
+Este aplicativo permite o ajuste dos parâmetros do controlador PID (`Kp`, `Kd`) e dos valores de PWM (Pulse-Width Modulation) para cada um dos robôs (**Atacante**, **Defensor** e **Goleiro**) em suas determinadas máquinas de estado.  
+A calibração é enviada instantaneamente para a estação base via protocolo UDP (User Datagram Protocol).
 
 ---
 
@@ -15,7 +15,7 @@ A calibração é enviada instantaneamente para a estação base via protocolo *
 - **Ajuste por Estado:** Possibilidade de adicionar e ajustar `Kp`, `Kd` e `PWM` para diferentes estados de comportamento do robô (ex: `Attacking`, `Seeking`).  
 - **Comunicação UDP:** Envio rápido e sem conexão dos dados de calibração em formato JSON.  
 - **Persistência Local:** Os últimos valores de calibração são salvos no dispositivo, garantindo que não se percam entre as sessões.  
-- **Configuração de Rede:** Diálogo para configuração rápida do IP e Porta UDP do servidor de recebimento.
+- **Configuração de Rede:** Possibilidade de alterar IP e Porta UDP antes do envio da mensagem, garantindo exatidão no envio corretamente e prevenção de manutenção para futuras mudanças nos endereços.
 
 ---
 
@@ -52,41 +52,55 @@ Os dados são empacotados em um objeto JSON contendo o nome do robô, e dentro d
     }
   }
 }
-⚙️ Instalação e Uso
+```
+---
+
+## ⚙️ Instalação e Uso
 Pré-requisitos
 Flutter SDK: Instale a versão mais recente do Flutter.
 
-Dispositivo de Teste: Um emulador ou dispositivo físico (Android ou iOS).
+Dispositivo de Teste: Um emulador (Android Studios) ou dispositivo físico (Android ou iOS).
 
-🚀 Configuração Rápida
-1️⃣ Clone o Repositório
-bash
-Copiar código
-git clone https://github.com/FHOBots/fhobots-pid-calibrator.git
-cd fhobots-pid-calibrator
-2️⃣ Instale as Dependências
-bash
-Copiar código
-flutter pub get
-3️⃣ Execute o Aplicativo
-bash
-Copiar código
-flutter run
-📡 Configurando a Conexão UDP
-Abra a tela de qualquer robô (Atacante, Defensor ou Goleiro).
+---
 
-Clique no ícone de Configurações (⚙️) na barra superior.
+## 🚀 Configuração Rápida
+- 1️⃣ Clone o Repositório.
+   ```bash
+    git clone https://github.com/FHOBots/fhobots-pid-calibrator.git
+    cd fhobots-pid-calibrator
+    ```
+- 2️⃣ Instale as Dependências
+```bash
+   flutter pub get
+```
+- 3️⃣ Execute o Aplicativo
+```bash
+  flutter run
+````
+---
 
-Insira o Endereço IP (geralmente o IP da estação base ou do robô) e a Porta UDP que está ouvindo os pacotes de calibração.
+## 📡 Configurando a Conexão UDP
+- Abra a tela de qualquer robô (Atacante, Defensor ou Goleiro).
 
-Clique em Salvar.
+-  Clique no ícone de Configurações (⚙️) na barra superior.
 
-🔧 Calibração
-Navegue para a página do robô desejado.
+-  Insira o Endereço IP do servidor e a Porta UDP que está ouvindo os pacotes de calibração (obs: O aplicativo já é endereçado para um servidor especifico. Só altere essa configuração caso seja necessário).
 
-Expanda o estado que deseja ajustar.
+-  Clique em Salvar.
 
-Insira os novos valores de Kp, Kd e PWM e pressione Enter para salvar localmente.
+---
+## 🔧 Calibração
+-  Navegue para a página do robô desejado.
 
-Clique no botão Enviar (📤) na barra superior.
-O aplicativo enviará o pacote JSON completo via UDP.
+-  Expanda o estado que deseja ajustar.
+
+-  Insira os novos valores de Kp, Kd e PWM e pressione Enter para salvar localmente.
+
+-  Clique no botão Enviar (✈️) na barra superior.
+-  O aplicativo enviará o pacote JSON completo via UDP.
+
+- Remova o estado selecionando o botão Remover (🗑️).
+
+- Adcione um novo estado selecionando botão Adcionar estado (➕).
+
+---
