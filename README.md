@@ -1,4 +1,4 @@
- **Aplicativo de Calibração do FHOBots** (Very Small Size Soccer - VSSS)
+## **Aplicativo de Calibração do FHOBots (Very Small Size Soccer - VSSS)**
 
 ## 📝 Visão Geral do Projeto
 
