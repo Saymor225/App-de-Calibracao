@@ -104,3 +104,48 @@ Dispositivo de Teste: Um emulador (Android Studios) ou dispositivo físico (Andr
 - Adcione um novo estado selecionando botão Adcionar estado (➕).
 
 ---
+
+## 📷 Screenshots
+
+<p align= center>
+   <img src= "https://github.com/user-attachments/assets/a6e77f16-5187-488f-9c53-2ad53260de27">
+</p>
+
+
+
+
+---
+<p align= center>
+   <img src= "https://github.com/user-attachments/assets/68b434d9-941b-4ee1-9c84-281f6b21303c">
+</p>
+
+
+---
+
+<p align= center>
+   <img src= "https://github.com/user-attachments/assets/e77c5730-f6f0-4aee-90c8-41721d9827ba">
+</p>
+
+
+
+---
+
+<p align= center>
+   <img src= "https://github.com/user-attachments/assets/73e6204c-5429-4d46-8502-950b4dc018f6">
+</p>
+
+
+
+---
+
+<p align= center>
+   <img src= "https://github.com/user-attachments/assets/fd0c04f0-2de8-449d-bdab-e99d0d7fcf02">
+</p>
+
+
+
+---
+
+
+
+
