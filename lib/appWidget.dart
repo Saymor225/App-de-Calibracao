@@ -8,7 +8,7 @@ class AppWidget extends StatelessWidget {
     return AnimatedBuilder(
         animation: appControler.instance,
         builder: (context, child) {
-          const Color primarySeedColor = Color.fromARGB(255, 5, 62, 247);
+          const Color primarySeedColor = Color.fromARGB(255, 5, 231, 247);
           final Brightness themeBrightness = appControler.instance.darkTheme
               ? Brightness.dark
               : Brightness.light;
