@@ -65,10 +65,10 @@ Dispositivo de Teste: Um emulador (Android Studios) ou dispositivo físico (Andr
 
 ## 🚀 Configuração Rápida
 - 1️⃣ Clone o Repositório.
-   ```bash
+```bash
     git clone https://github.com/FHOBots/fhobots-pid-calibrator.git
     cd fhobots-pid-calibrator
-    ```
+```
 - 2️⃣ Instale as Dependências
 ```bash
    flutter pub get
